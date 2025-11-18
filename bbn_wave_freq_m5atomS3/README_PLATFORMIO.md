@@ -6,8 +6,8 @@
 
 相比原始Arduino项目的主要修改：
 
-1. **项目结构**：所有源代码（`.cpp`和`.h`）移动到`src/`目录
-2. **代码修复**：修复了`MonoWedge.h`中void函数的return语句bug
+1. **项目结构**：所有源代码（`.cpp`和 `.h`）移动到 `src/`目录
+2. **代码修复**：修复了 `MonoWedge.h`中void函数的return语句bug
 3. **新增文件**：
    - `platformio.ini` - PlatformIO配置
    - `merge_firmware.py` - 固件合并脚本
@@ -29,6 +29,7 @@ pio device monitor
 ## 同步上游更新
 
 ### 首次设置（仅需一次）
+
 ```bash
 # 添加上游仓库
 git remote add upstream https://github.com/bareboat-necessities/bbn-wave-period-esp32.git
@@ -37,14 +38,35 @@ git remote add upstream https://github.com/bareboat-necessities/bbn-wave-period-
 ### 同步更新流程
 
 #### Windows
+
 ```bash
 git fetch upstream
 git merge upstream/main
 setup_platformio.bat
 pio run
+
+
+
+
+# 1. 拉取上游更新
+git fetch upstream
+git merge upstream/main
+
+# 2. 恢复PlatformIO结构
+cd bbn_wave_freq_m5atomS3
+setup_platformio.bat  # Windows
+
+# 3. 编译测试
+pio run
+
+# 4. 提交并推送
+git add .
+git commit -m "同步上游更新"
+git push origin refs/heads/main:refs/heads/main
 ```
 
 #### Linux/Mac
+
 ```bash
 git fetch upstream
 git merge upstream/main
@@ -55,25 +77,29 @@ pio run
 ## 脚本功能
 
 `setup_platformio.sh` / `setup_platformio.bat` 会自动：
-- 创建`src/`目录
-- 将`.ino`重命名为`.cpp`
-- 移动所有源文件到`src/`
-- 修复`MonoWedge.h`的bug
-- 检查并创建`platformio.ini`
+
+- 创建 `src/`目录
+- 将 `.ino`重命名为 `.cpp`
+- 移动所有源文件到 `src/`
+- 修复 `MonoWedge.h`的bug
+- 检查并创建 `platformio.ini`
 
 ## 固件烧录
 
 ### 使用PlatformIO
+
 ```bash
 pio run -t upload
 ```
 
 ### 使用esptool（全量固件）
+
 ```bash
 esptool.py --chip esp32s3 --port COM3 --baud 1500000 write_flash 0x0 firmware/esp32s3_m5stack-atoms3_8MB_latest.bin
 ```
 
 固件文件位置：
+
 - `.pio/build/m5stack-atoms3/` - 构建目录
 - `firmware/` - 固件输出目录（带时间戳和latest版本）
 
@@ -102,17 +128,16 @@ bbn_wave_freq_m5atomS3/
 
 ## 常见问题
 
-**Q: 编译错误找不到ArduinoEigenDense.h**  
-A: 确保`platformio.ini`中包含`hideakitai/ArduinoEigen@^0.3.2`
+**Q: 编译错误找不到ArduinoEigenDense.h**
+A: 确保 `platformio.ini`中包含 `hideakitai/ArduinoEigen@^0.3.2`
 
-**Q: void函数return错误**  
-A: 运行设置脚本修复`MonoWedge.h`
+**Q: void函数return错误**
+A: 运行设置脚本修复 `MonoWedge.h`
 
-**Q: 找不到源文件**  
-A: 确保所有`.cpp`和`.h`文件在`src/`目录中
+**Q: 找不到源文件**
+A: 确保所有 `.cpp`和 `.h`文件在 `src/`目录中
 
 ## 更多信息
 
 - PlatformIO文档：https://docs.platformio.org
 - M5Stack文档：https://docs.m5stack.com
-
