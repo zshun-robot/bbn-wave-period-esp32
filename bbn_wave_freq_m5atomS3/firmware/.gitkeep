@@ -1,0 +1,3 @@
+# This file keeps the firmware directory in git
+# Firmware binary files are generated during build
+
