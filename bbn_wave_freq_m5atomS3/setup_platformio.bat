@@ -14,9 +14,10 @@ echo 🔧 开始设置PlatformIO项目结构...
 echo ==========================================
 echo.
 
-REM 1. 创建src目录
-echo 📁 创建src目录...
+REM 1. 创建src和include目录
+echo 📁 创建src和include目录...
 if not exist "src" mkdir src
+if not exist "include" mkdir include
 
 REM 2. 移动源文件到src目录
 echo 📦 移动源文件到src目录...
@@ -35,24 +36,31 @@ if !ino_count! gtr 0 (
     echo   - 已重命名 !ino_count! 个.ino文件为.cpp
 )
 
-REM 移动所有.cpp和.h文件到src目录
-set moved_count=0
-for %%f in (*.cpp *.h) do (
+REM 移动所有.cpp文件到src目录, .h文件到include目录
+set moved_cpp=0
+set moved_h=0
+for %%f in (*.cpp) do (
     if exist "%%f" (
         move /Y "%%f" "src\" >nul 2>&1
-        set /a moved_count+=1
+        set /a moved_cpp+=1
     )
 )
-echo   ✓ 已移动 !moved_count! 个文件到src目录
+for %%f in (*.h) do (
+    if exist "%%f" (
+        move /Y "%%f" "include\" >nul 2>&1
+        set /a moved_h+=1
+    )
+)
+echo   ✓ 已移动 !moved_cpp! 个 .cpp 文件到 src 目录，!moved_h! 个 .h 文件到 include 目录
 
 REM 3. 修复MonoWedge.h中的bug（如果还存在）
 echo 🔧 检查MonoWedge.h中的代码bug...
-if exist "src\MonoWedge.h" (
-    powershell -Command "(Get-Content 'src\MonoWedge.h') -replace 'return mono_wedge_update\(wedge, value, std::less<T>\(\)\);', 'mono_wedge_update(wedge, value, std::less<T>());' | Set-Content 'src\MonoWedge.h'"
-    powershell -Command "(Get-Content 'src\MonoWedge.h') -replace 'return mono_wedge_update\(wedge, value, std::greater<T>\(\)\);', 'mono_wedge_update(wedge, value, std::greater<T>());' | Set-Content 'src\MonoWedge.h'"
+if exist "include\MonoWedge.h" (
+    powershell -Command "(Get-Content 'include\MonoWedge.h') -replace 'return mono_wedge_update\(wedge, value, std::less<T>\(\)\);', 'mono_wedge_update(wedge, value, std::less<T>());' | Set-Content 'include\MonoWedge.h'"
+    powershell -Command "(Get-Content 'include\MonoWedge.h') -replace 'return mono_wedge_update\(wedge, value, std::greater<T>\(\)\);', 'mono_wedge_update(wedge, value, std::greater<T>());' | Set-Content 'include\MonoWedge.h'"
     echo   ✓ MonoWedge.h 已检查并修复
 ) else (
-    echo   ⚠️  警告: src\MonoWedge.h 不存在
+    echo   ⚠️  警告: include\MonoWedge.h 不存在（或者不需要修复）
 )
 
 REM 4. 检查platformio.ini是否存在
@@ -116,11 +124,12 @@ echo 📂 项目结构:
 echo   bbn_wave_freq_m5atomS3/
 echo   ├── platformio.ini       (PlatformIO配置)
 echo   ├── merge_firmware.py    (固件合并脚本)
-echo   ├── src/                 (源代码目录)
-echo   │   ├── bbn_wave_freq_m5atomS3.cpp  (主程序 for AtomS3)
+echo   ├── include/             (头文件目录)
 echo   │   ├── AtomS3R_*.h      (AtomS3R扩展头文件)
 echo   │   ├── Bosch*.h         (Bosch IMU驱动头文件)
 echo   │   └── *.h              (通用算法头文件)
+echo   ├── src/                 (源代码目录)
+echo   │   ├── *.cpp            (实现文件和主程序)
 echo   ├── data-sim/            (仿真数据)
 echo   ├── doc/                 (文档)
 echo   ├── plots/               (绘图脚本)

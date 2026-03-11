@@ -78,9 +78,9 @@ pio run
 
 `setup_platformio.sh` / `setup_platformio.bat` 会自动：
 
-- 创建 `src/` 目录
+- 创建 `src/` 和 `include/` 目录
 - 将 `.ino` 重命名为 `.cpp`
-- 移动所有 `.cpp` 和 `.h` 文件到 `src/`
+- 移动所有 `.cpp` 到 `src/`，`.h` 文件到 `include/`
 - 修复 `MonoWedge.h` 的 bug（如有）
 - 检查并创建 `platformio.ini`
 
@@ -111,12 +111,13 @@ bbn_wave_freq_m5atomS3/
 ├── merge_firmware.py           # 固件合并脚本
 ├── setup_platformio.sh         # 设置脚本 (Linux/Mac)
 ├── setup_platformio.bat        # 设置脚本 (Windows)
-├── src/                        # 源代码目录
-│   ├── bbn_wave_freq_m5atomS3.cpp   # 主程序 (M5AtomS3, MPU6886)
+├── include/                    # 头文件目录
 │   ├── AtomS3R_*.h             # AtomS3R 扩展头文件 (BMI270, 仅供参考)
 │   ├── Bosch*.h                # Bosch IMU 驱动头文件 (AtomS3R 专用)
-│   ├── ImuCalWizardRunner.cpp  # AtomS3R IMU 校准 (被 build_src_filter 排除)
 │   └── *.h                     # 通用算法头文件
+├── src/                        # 源代码目录
+│   ├── bbn_wave_freq_m5atomS3.cpp   # 主程序 (M5AtomS3, MPU6886)
+│   ├── ImuCalWizardRunner.cpp  # AtomS3R IMU 校准 (被 build_src_filter 排除)
 ├── firmware/                   # 固件输出
 ├── data-sim/                   # 仿真数据
 ├── doc/                        # 文档
@@ -143,10 +144,10 @@ A: 确保 `platformio.ini` 中包含 `hideakitai/ArduinoEigen@^0.3.2`
 A: 该文件是 AtomS3R 专用，已通过 `build_src_filter` 排除，正常编译不会处理它
 
 **Q: 找不到源文件**  
-A: 确保所有 `.cpp` 和 `.h` 文件在 `src/` 目录中，运行 `setup_platformio.bat` 自动整理
+A: 确保所有 `.cpp` 文件在 `src/` 目录，所有 `.h` 文件在 `include/` 目录中，运行 `setup_platformio.bat` 自动整理
 
 **Q: 上游同步后有冲突**  
-A: rename/delete 冲突通常是上游删除了文件但我们 src/ 中还有，用 `git rm <file>` 接受删除即可
+A: rename/delete 冲突通常是上游删除了文件但我们 `include/` 或 `src/` 中还有，用 `git rm <file>` 接受删除即可
 
 ## 版本历史
 

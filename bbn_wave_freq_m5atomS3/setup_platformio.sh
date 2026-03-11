@@ -13,9 +13,9 @@ echo "=========================================="
 echo "🔧 开始设置PlatformIO项目结构..."
 echo "=========================================="
 
-# 1. 创建src目录
-echo "📁 创建src目录..."
-mkdir -p src
+# 1. 创建src和include目录
+echo "📁 创建src和include目录..."
+mkdir -p src include
 
 # 2. 移动源文件到src目录
 echo "📦 移动源文件到src目录..."
@@ -31,26 +31,33 @@ if ls *.ino 1> /dev/null 2>&1; then
     done
 fi
 
-# 移动所有.cpp和.h文件到src目录
+# 移动所有.cpp到src，.h到include
 echo "  - 移动.cpp和.h文件..."
-moved_count=0
-for file in *.cpp *.h; do
+moved_cpp=0
+moved_h=0
+for file in *.cpp; do
     if [ -f "$file" ]; then
         mv "$file" src/
-        moved_count=$((moved_count + 1))
+        moved_cpp=$((moved_cpp + 1))
     fi
 done
-echo "    ✓ 已移动 $moved_count 个文件到src目录"
+for file in *.h; do
+    if [ -f "$file" ]; then
+        mv "$file" include/
+        moved_h=$((moved_h + 1))
+    fi
+done
+echo "    ✓ 已移动 $moved_cpp 个 .cpp 到src目录, $moved_h 个 .h 到include目录"
 
 # 3. 修复MonoWedge.h中的bug (void函数不应该有return值)
 echo "🔧 修复MonoWedge.h中的代码bug..."
-if [ -f "src/MonoWedge.h" ]; then
+if [ -f "include/MonoWedge.h" ]; then
     # 使用sed修复return语句
-    sed -i 's/return mono_wedge_update(wedge, value, std::less<T>());/mono_wedge_update(wedge, value, std::less<T>());/g' src/MonoWedge.h
-    sed -i 's/return mono_wedge_update(wedge, value, std::greater<T>());/mono_wedge_update(wedge, value, std::greater<T>());/g' src/MonoWedge.h
+    sed -i 's/return mono_wedge_update(wedge, value, std::less<T>());/mono_wedge_update(wedge, value, std::less<T>());/g' include/MonoWedge.h
+    sed -i 's/return mono_wedge_update(wedge, value, std::greater<T>());/mono_wedge_update(wedge, value, std::greater<T>());/g' include/MonoWedge.h
     echo "  ✓ MonoWedge.h 已修复"
 else
-    echo "  ⚠️  警告: src/MonoWedge.h 不存在"
+    echo "  ⚠️  警告: include/MonoWedge.h 不存在（或者不需要修复）"
 fi
 
 # 4. 检查platformio.ini是否存在
@@ -114,9 +121,10 @@ echo "📂 项目结构:"
 echo "  bbn_wave_freq_m5atomS3/"
 echo "  ├── platformio.ini       (PlatformIO配置)"
 echo "  ├── merge_firmware.py    (固件合并脚本)"
+echo "  ├── include/             (头文件目录)"
+echo "  │   ├── *.h              (所有头文件)"
 echo "  ├── src/                 (源代码目录)"
-echo "  │   ├── *.cpp"
-echo "  │   └── *.h"
+echo "  │   ├── *.cpp            (实现文件)"
 echo "  ├── data-sim/            (仿真数据)"
 echo "  ├── doc/                 (文档)"
 echo "  ├── plots/               (绘图脚本)"
