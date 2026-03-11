@@ -5,6 +5,7 @@ import re
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import numpy as np
 
 # === Matplotlib PGF/LaTeX config ===
 mpl.use("pgf")
@@ -53,6 +54,24 @@ def latex_safe(s: str) -> str:
     return s.replace("_", r"\_")
 
 # === Helpers ===
+def plot_envelope(ax, t, env, label=r"Envelope $\pm$ disp\_scale", shade=True):
+    """
+    Plot +/- envelope around zero.
+    env can contain NaNs; they will be masked out.
+    """
+    env = np.asarray(env, dtype=float)
+    m = np.isfinite(env)
+    if not np.any(m):
+        return
+
+    # dashed lines
+    ax.plot(t[m],  env[m], linestyle=":", linewidth=1.0, label=label)
+    ax.plot(t[m], -env[m], linestyle=":", linewidth=1.0)
+
+    # optional shading
+    if shade:
+        ax.fill_between(t[m], -env[m], env[m], alpha=0.12)
+
 def make_subplots(nrows: int, title: str, width: float = 10.0, row_height: float = 2.5, sharex: bool = True):
     """
     Create a figure with nrows stacked subplots, auto-scaling height.
@@ -172,9 +191,29 @@ for fname in files:
 
         ax_val.plot(time, df[f"{prefix}_ref_z"], label="Ref")
         ax_val.plot(time, df[f"{prefix}_est_z"], label="Est", linestyle="--")
+
+        # --- Envelope overlays ---
+        if prefix == "disp":
+            if "disp_scale_m" in df.columns:
+                plot_envelope(ax_val, time.to_numpy(), df["disp_scale_m"].to_numpy(),
+                              label=r"Envelope $\pm$ disp\_scale", shade=True)
+            else:
+                ax_val.text(0.01, 0.10, "Missing: disp_scale_m", transform=ax_val.transAxes)
+        elif prefix == "vel":
+            if "vel_scale_mps" in df.columns:
+                plot_envelope(ax_val, time.to_numpy(), df["vel_scale_mps"].to_numpy(),
+                              label=r"Envelope $\pm$ vel\_scale", shade=True)
+            else:
+                ax_val.text(0.01, 0.10, "Missing: vel_scale_mps", transform=ax_val.transAxes)
+
         ax_val.set_ylabel(f"{prefix.capitalize()} Z")
-        ax_val.legend()
         ax_val.grid(True)
+        ax_val.legend(loc="upper right", fontsize=8)
+
+        if PLOT_ERRORS:
+            ax_err.plot(time, df[f"{prefix}_err_z"], color="tab:red")
+            ax_err.set_ylabel("Error")
+            ax_err.grid(True)
 
         if PLOT_ERRORS:
             ax_err.plot(time, df[f"{prefix}_err_z"], color="tab:red")
@@ -244,3 +283,121 @@ for fname in files:
         ax.legend(loc="upper right")
     axes[-1].set_xlabel("Time (s)")
     finalize_plot(fig, outbase, "_gyro_bias")
+
+    # === Magnetometer bias estimates vs true (+ errors) ===
+    mag_pairs = [
+        ("mag_bias_x", "mag_bias_est_x", "Mag bias X"),
+        ("mag_bias_y", "mag_bias_est_y", "Mag bias Y"),
+        ("mag_bias_z", "mag_bias_est_z", "Mag bias Z"),
+    ]
+
+    # Only plot if the required columns exist
+    needed = [c for t,e,_ in mag_pairs for c in (t,e)]
+    if all(c in df.columns for c in needed):
+        nrows = 2 * len(mag_pairs) if PLOT_ERRORS else len(mag_pairs)
+        fig, axes = make_subplots(nrows, latex_safe(basename) + " (Magnetometer Biases)")
+
+        for i, (true_col, est_col, label) in enumerate(mag_pairs):
+            if PLOT_ERRORS:
+                ax_val = axes[2*i]
+                ax_err = axes[2*i + 1]
+            else:
+                ax_val = axes[i]
+                ax_err = None
+
+            ax_val.plot(time, df[true_col], label="True", linewidth=1.5)
+            ax_val.plot(time, df[est_col], label="Estimated", linestyle="--", linewidth=1.0)
+            ax_val.set_ylabel(latex_safe(label) + r" [$\mu$T]")
+            ax_val.grid(True)
+            ax_val.legend(loc="upper right")
+
+            if PLOT_ERRORS:
+                err = df[est_col] - df[true_col]
+                ax_err.plot(time, err, color="tab:red")
+                ax_err.set_ylabel(r"Error [$\mu$T]")
+                ax_err.grid(True)
+
+        axes[-1].set_xlabel("Time (s)")
+        finalize_plot(fig, outbase, "_mag_bias")
+    else:
+        missing = [c for c in needed if c not in df.columns]
+        print(f"  (skip mag bias plots; missing columns: {missing})")
+
+    # === Frequency / Tuner ===
+    # We plot accel std-dev (sqrt variance) and sigma_a on the same axis.
+    tuner_panels = [
+        ("freq_tracker_hz", "Frequency (Hz)"),
+        ("accel_std_combo", r"Accel std and $\sigma_a$ applied ($m/s^2$)"),
+        ("tau_applied",     r"$\tau$ applied (s)"),
+        ("R_S_applied",     r"$R_S$ applied (m$\cdot$s)"),
+    ]
+
+    fig, axes = make_subplots(len(tuner_panels), latex_safe(basename) + " (Frequency / Tuner)")
+    for ax, (key, ylabel) in zip(axes, tuner_panels):
+
+        if key == "accel_std_combo":
+            have_any = False
+
+            # Prefer accel_std_tuner if it exists; otherwise compute sqrt(accel_var_tuner)
+            if "accel_std_tuner" in df.columns:
+                ax.plot(time, df["accel_std_tuner"], linewidth=1.2, label=r"Accel std (tuner)")
+                have_any = True
+            elif "accel_var_tuner" in df.columns:
+                var = df["accel_var_tuner"].to_numpy()
+                std = np.sqrt(np.clip(var, 0.0, None))
+                ax.plot(time, std, linewidth=1.2, label=r"Accel std ($\sqrt{\mathrm{var}}$)")
+                have_any = True
+            else:
+                ax.text(0.01, 0.60, "Missing: accel_std_tuner or accel_var_tuner", transform=ax.transAxes)
+
+            if "sigma_a_applied" in df.columns:
+                ax.plot(time, df["sigma_a_applied"], linewidth=1.2, linestyle="--", label=r"$\sigma_a$ applied")
+                have_any = True
+            else:
+                ax.text(0.01, 0.40, "Missing: sigma_a_applied", transform=ax.transAxes)
+
+            ax.set_ylabel(ylabel)
+            ax.grid(True)
+            if have_any:
+                ax.legend(loc="upper right", fontsize=8)
+            continue
+
+        # Normal single-series panels
+        if key not in df.columns:
+            ax.text(0.01, 0.5, f"Missing: {key}", transform=ax.transAxes)
+            ax.set_axis_off()
+            continue
+
+        ax.plot(time, df[key], linewidth=1.2)
+        ax.set_ylabel(ylabel)
+        ax.grid(True)
+
+    axes[-1].set_xlabel("Time (s)")
+    finalize_plot(fig, outbase, "_tuner")
+
+    # === Direction ===
+    dir_cols = [
+        ("dir_deg",        r"Dir (deg, axial)"),
+        ("dir_uncert_deg", r"Uncert (deg, $\sim 95\%$)"),
+        ("dir_conf",       "Confidence"),
+        ("dir_sign_num",   "Sign (+1/-1/0)"),
+    ]
+
+    fig, axes = make_subplots(len(dir_cols), latex_safe(basename) + " (Direction)")
+    for ax, (col, ylabel) in zip(axes, dir_cols):
+        if col not in df.columns:
+            ax.text(0.01, 0.5, f"Missing: {col}", transform=ax.transAxes)
+            ax.set_axis_off()
+            continue
+
+        if col == "dir_sign_num":
+            ax.step(time, df[col], where="post", linewidth=1.2)
+            ax.set_yticks([-1, 0, 1])
+        else:
+            ax.plot(time, df[col], linewidth=1.2)
+
+        ax.set_ylabel(ylabel)
+        ax.grid(True)
+
+    axes[-1].set_xlabel("Time (s)")
+    finalize_plot(fig, outbase, "_dir")

@@ -26,7 +26,7 @@ using Eigen::Vector3f;
 #endif
 
 // Standard gravity (NED, +Z down)
-const float g_std = 9.80665f;
+constexpr float g_std = 9.80665f;
 
 #ifndef FREQ_GUESS
 #define FREQ_GUESS 0.3f   // Hz (for initial ω inside filters that use it)
@@ -180,7 +180,7 @@ struct FusionWrap : IFusion {
     WaveDirection dir_sign_state() const override { return f.getDirSignState(); }
 };
 
-static std::unique_ptr<IFusion> make_fusion(const std::string& name, bool with_mag=false) {
+static std::unique_ptr<IFusion> make_fusion(const std::string& name, bool with_mag=true) {
     (void)with_mag; // currently unused; SeaStateFusionFilter ctor has with_mag arg if you want it
     if (name == "aran") return std::make_unique<FusionWrap<TrackerType::ARANOVSKIY>>();
     if (name == "zc")   return std::make_unique<FusionWrap<TrackerType::ZEROCROSS>>();
@@ -366,7 +366,7 @@ int main(int argc, char* argv[]) {
               << ", noise=" << (add_noise ? "true" : "false")
               << ", dt=" << dt << " s\n";
 
-    auto fusion = make_fusion(tracker_name, /*with_mag*/ false);
+    auto fusion = make_fusion(tracker_name, /*with_mag*/ true);
 
     std::vector<std::string> files;
     for (auto &entry : std::filesystem::directory_iterator(".")) {

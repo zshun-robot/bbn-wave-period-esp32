@@ -14,23 +14,30 @@ jobs:
     - name: Compile sketch
       uses: ArminJo/arduino-test-compile@v3
       with:
-        arduino-board-fqbn: esp32:esp32:m5stack-atoms3:CDCOnBoot=cdc
-        arduino-platform: esp32:esp32@2.0.17
+        arduino-board-fqbn: esp32:esp32:m5stack_atoms3:CDCOnBoot=cdc,USBMode=hwcdc
+        arduino-platform: esp32:esp32@3.3.5
         platform-url: https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
-        required-libraries: M5Unified@0.2.7,M5GFX@0.2.9,Eigen@0.3.2
+        required-libraries: M5Unified@0.2.13,M5GFX@0.2.19,Eigen@0.3.2,Arduino_BMI270_BMM150@1.2.3
         sketch-names: "*.ino"
         sketch-names-find-start: bbn_*/*
         extra-arduino-cli-args: "--warnings default --build-property compiler.libraries.ldflags=-Wl,--allow-multiple-definition --build-property compiler.cpp.extra_flag=-mvector --build-property compiler.cpp.extra_flag=-funroll-loops --build-property compiler.cpp.extra_flag=-fno-finite-math-only"
         set-build-path: true
 
+    - name: Find versions
+      run: |
+        find /home/runner -name esptool\*
+        find /home/runner -name boot_app0.bin
+        ls -la /home/runner/
+        ls -l /home/runner/.arduino15/packages/esp32/tools/esptool_py/*
+          
     - name: Make merged .bin
       run: >
-        python3 "$HOME/.arduino15/packages/esp32/tools/esptool_py/4.5.1/esptool.py" 
+        $HOME/.arduino15/packages/esp32/tools/esptool_py/5.1.0/esptool
         --chip esp32s3 merge_bin -o $HOME/work/bbn-wave-period-esp32/bbn-wave-period-esp32/bbn_wave_freq_m5atomS3/build/bbn_wave_freq_m5atomS3_firmware.bin 
-        --flash_mode dio --flash_freq 80m --flash_size 8MB 
+        --flash_mode dio --flash_freq 80m --flash_size 8MB
         0x0 "$HOME/work/bbn-wave-period-esp32/bbn-wave-period-esp32/bbn_wave_freq_m5atomS3/build/bbn_wave_freq_m5atomS3.ino.bootloader.bin" 
         0x8000 "$HOME/work/bbn-wave-period-esp32/bbn-wave-period-esp32/bbn_wave_freq_m5atomS3/build/bbn_wave_freq_m5atomS3.ino.partitions.bin" 
-        0xe000 "$HOME/.arduino15/packages/esp32/hardware/esp32/2.0.17/tools/partitions/boot_app0.bin" 
+        0xe000 "$HOME/.arduino15/packages/esp32/hardware/esp32/3.3.5/tools/partitions/boot_app0.bin"
         0x10000 "$HOME/work/bbn-wave-period-esp32/bbn-wave-period-esp32/bbn_wave_freq_m5atomS3/build/bbn_wave_freq_m5atomS3.ino.bin"
    
     - name: Make zip
@@ -48,33 +55,7 @@ jobs:
         overwrite: true
         file_glob: true
 
-  gen-sim-data:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Generate Data Checkout
-      uses: actions/checkout@v4
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y make g++ libeigen3-dev texlive-xetex texlive-latex-recommended texlive-fonts-recommended texlive-latex-extra
-    - name: Build code
-      run: |
-        cd  "$HOME"/work/bbn-wave-period-esp32/bbn-wave-period-esp32/bbn_wave_freq_m5atomS3/data-sim
-        chmod +x *.sh
-        ./gen_sim_data.sh
-        ./freq_track.sh
-        ./sea_reg.sh
-        ./qmekf_sim.sh
-        ./w3d_sim_adapt_2.sh
-        ./w3d_sim_adapt_3.sh
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: sim-data-files
-        path: "**/*.csv"
-
   gen-plots:
-    needs: gen-sim-data
     runs-on: ubuntu-latest
     steps:
     - name: Generate Plots Checkout
@@ -83,10 +64,24 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y make g++ libeigen3-dev texlive-xetex texlive-latex-recommended texlive-fonts-recommended texlive-latex-extra texlive-fonts-extra dvipng
-    - name: Download sim data
-      uses: actions/download-artifact@v4
-      with: 
-        name: sim-data-files
+    - name: Download sim data from vTest release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release download v1.0.1 --repo bareboat-necessities/oceanography-waves-lib --pattern "sim-data-files.zip" --clobber
+    - name: Unpack simulation data
+      run: |
+        unzip -o sim-data-files.zip -d "$HOME"/work/bbn-wave-period-esp32/bbn-wave-period-esp32/bbn_wave_freq_m5atomS3/data-sim
+    - name: Run downstream processing with simulation data
+      run: |
+        cd "$HOME"/work/bbn-wave-period-esp32/bbn-wave-period-esp32/bbn_wave_freq_m5atomS3/data-sim
+        make -j 4
+        chmod +x freq_track.sh sea_reg.sh qmekf_sim.sh w3d_sim_adapt_2.sh w3d_sim_adapt_3.sh
+        ./freq_track.sh
+        ./sea_reg.sh
+        ./qmekf_sim.sh
+        ./w3d_sim_adapt_2.sh
+        ./w3d_sim_adapt_3.sh
     - name: Move data files
       run: |
         mv "$HOME"/work/bbn-wave-period-esp32/bbn-wave-period-esp32/bbn_wave_freq_m5atomS3/data-sim/*.csv "$HOME"/work/bbn-wave-period-esp32/bbn-wave-period-esp32/bbn_wave_freq_m5atomS3/plots/

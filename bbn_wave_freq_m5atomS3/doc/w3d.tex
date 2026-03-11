@@ -34,6 +34,29 @@
 %\let\Bbbk\relax
 %\usepackage{amssymb}
 
+% Vectors and matrices: bold italic (IEEE-style)
+\DeclareRobustCommand{\vct}[1]{\bm{#1}}  % vectors (Latin & Greek)
+\DeclareRobustCommand{\mat}[1]{\bm{#1}}  % matrices (LATIN)
+\DeclareRobustCommand{\matg}[1]{\bm{#1}} % matrices (GREEK)
+
+% === Spaces / groups (quaternions, rotations) ===
+\newcommand{\Quat}{\mathbb{H}}        % all quaternions
+\newcommand{\Sph}{\mathbb{S}}         % spheres; unit quats live in \Sph^3
+\newcommand{\SO}{\mathrm{SO}}         % rotation group
+\newcommand{\SE}{\mathrm{SE}}         % rigid motions
+
+% === Quaternion variables ===
+% Quaternion as a 4-vector: bold italic (consistent with \vct)
+\newcommand{\quat}[1]{\vct{#1}} 
+
+% Rotation matrices / operators (leave \mathbf{R} for Kalman measurement noise)
+\newcommand{\Rot}{\bm{\mathcal{R}}}
+
+% Optional helpers (use only if you like the notation)
+\newcommand{\qconj}[1]{\overline{#1}} % quaternion conjugate
+\newcommand{\qreal}[1]{\operatorname{Re}\! \left(#1\right)} % real part
+\newcommand{\qimag}[1]{\operatorname{Im}\! \left(#1\right)} % imaginary/vector part
+
 \usepackage{cite}
 \usepackage[breaklinks=true,hidelinks]{hyperref}
 \usepackage{bookmark}
@@ -65,6 +88,12 @@
   \def\_{}%
   \def\cdot{}%
   \def\;{ }%
+  \def\I{I}%
+  \def\quat#1{#1}%
+  \def\SO{SO}%
+  \def\SE{SE}%
+  \def\Quat{H}%
+  \def\Sph{S}%
 }
 
 \AtBeginEnvironment{equation}{\small}
@@ -95,6 +124,14 @@
   \DeclareUnicodeCharacter{2212}{\textminus}         % − (math minus)
 \fi
 
+% Make math macros harmless in PDF bookmarks
+\pdfstringdefDisableCommands{%
+  \def\vct#1{#1}%
+  \def\mat#1{#1}%
+  \def\matg#1{#1}%
+  \def\I{I}%
+}
+
 % Theorems: small header/body
 \newtheoremstyle{bodysmall}
   {3pt}{3pt}{\normalfont\small}{0pt}{\bfseries\small}{.}{0.5em}{}
@@ -103,9 +140,12 @@
 \newtheorem{theorem}{Theorem}
 \newtheorem*{theorem*}{Theorem}
 
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
 % Shortcuts
 \newcommand{\Skew}[1]{\left[#1\right]_\times}
-\newcommand{\Id}{\mathbf{I}}
+\newcommand{\Id}{\mat{I}}
 \newcommand{\pct}[1]{#1\%}
 \newcommand{\meanstd}[2]{#1 \pm #2}
 % or
@@ -124,6 +164,21 @@
 \DeclareMathOperator{\diag}{diag}
 \DeclareMathOperator{\sym}{sym}
 
+% === Sets and spaces ===
+\newcommand{\set}[1]{\mathcal{#1}}  % generic set, e.g. \set{X}
+\newcommand{\R}{\mathbb{R}}         % real numbers
+\newcommand{\C}{\mathbb{C}}         % complex numbers
+\newcommand{\N}{\mathbb{N}}         % natural numbers
+\newcommand{\Z}{\mathbb{Z}}         % integers
+
+% === Probability / statistics ===
+\newcommand{\E}{\mathbb{E}}         % expectation
+\DeclareMathOperator{\Var}{Var}     % variance
+\DeclareMathOperator{\Cov}{Cov}     % covariance
+
+% Text subscript helper (labels, not variables)
+\newcommand{\ts}[1]{\text{#1}}
+
 % Two-column helper (no layout change)
 \newcommand{\fitcol}[1]{%
   \adjustbox{max width=\columnwidth}{\ensuremath{\displaystyle #1}}%
@@ -141,8 +196,8 @@
 \allowdisplaybreaks
 
 % Title & authors (IEEEtran conference style)
-\title{A Multiplicative EKF with Latent OU Acceleration for Drift-Robust Wave Kinematics:\\
-Theory, Discretization, and Bias Compensation (draft)}
+\title{OU-Driven Quaternion MEKF for Marine INS and Wave-State Estimation\\
+(draft)}
 
 \author{%
 \IEEEauthorblockN{Mikhail S. Grushinskiy}
@@ -157,21 +212,18 @@ Email: mgrouch@users.github.com}%
 \maketitle
 
 \begin{abstract}
-We present a detailed mathematical development of a quaternion multiplicative extended Kalman filter fused with an extended
-linear kinematic chain for ocean-wave motion estimation. The method augments attitude, with gyroscope and
-accelerometer bias, by linear velocity, displacement, and the integral of displacement, driven by a latent world-frame
-acceleration modeled as an Ornstein--Uhlenbeck process. The Ornstein--Uhlenbeck prior provides stationary variance and
-realistic temporal correlation for the latent acceleration, which slows the growth of drift in integrated states compared
-with white-noise forcing. Biases are explicitly modeled: gyroscope bias as a
-random walk and accelerometer bias as both random walk and systematic temperature-dependent drift. A pseudo-measurement is
-introduced on the integral of displacement to control double-integral divergence. We derive continuous-time and discrete-time
-process models, present Rodrigues and analytic discretizations, and give explicit Jacobians for accelerometer and
-magnetometer updates. We design and present an additional Kalman filter for wave direction estimation. 
-Finally, we discuss tuning strategies and adaptive parameter estimation using frequency trackers.
+We present a detailed mathematical development of a quaternion multiplicative EKF for ocean-wave motion that couples attitude to an extended 
+linear kinematic chain for velocity, displacement, and the integral of displacement. World-frame acceleration is modeled as 
+an Ornstein–Uhlenbeck (OU) process, giving stationary variance and realistic temporal correlation. Gyroscope bias is modeled as a random walk; 
+accelerometer bias includes random-walk and temperature-dependent drift. To suppress double-integration drift, we add an anisotropic 
+pseudo-measurement on the integral state. We derive continuous- and discrete-time models with Rodrigues/analytic discretizations and 
+provide explicit Jacobians for accelerometer and magnetometer updates. A lightweight Kalman filter estimates horizontal wave direction 
+using the tracked carrier frequency. We also outline practical tuning and a novel adaptive law that scales the pseudo-measurement 
+variance with the OU parameters, enabling stable behavior across sea states. The approach targets embedded, low-cost IMU deployments, enabling accurate, real-time heave and wave direction estimation for dynamic positioning, unmanned vehicles, maritime safety, and oceanographic studies.
 \end{abstract}
 
 \begin{IEEEkeywords}
-extended Kalman filter, inertial navigation, IMU, marine motion reference unit, MRU, Ornstein--Uhlenbeck process, heave reference system, HRS, heave sensor,
+extended Kalman filter, inertial navigation, IMU, marine Motion Reference Unit, MRU, Ornstein--Uhlenbeck process, Heave Reference System, HRS, heave sensor,
 wave height estimation, wave measurement buoy
 \end{IEEEkeywords}
 
@@ -179,6 +231,7 @@ wave height estimation, wave measurement buoy
 \input{w3d-intro.tex-part}
 \input{w3d-state.tex-part}
 \input{w3d-meas.tex-part}
+\input{w3d-wind-heel.tex-part}
 \input{w3d-proc-cont.tex-part}
 \input{w3d-lti-discrete.tex-part}
 %\input{w3d-proc.tex-part}
@@ -211,11 +264,15 @@ wave height estimation, wave measurement buoy
 
 %\input{sim-results.tex-part}
 \input{sim-charts.tex-part}
+\input{w3d-gps-fusion.tex-part}
 
 \FloatBarrier
 
 \section*{Acknowledgments}
 This work was prepared with the supervised assistance of artificial intelligence tools, including ChatGPT and DeepSeek, which were employed to aid in code generation, mathematical drafting, and editorial preparation. All conceptual development, validation of results, and final revisions were conducted independently by the author.
+
+\section*{Disclosure Statement}
+The author declares no conflicts of interest and received no funding for this research.
 
 %\nocite{*}
 \bibliographystyle{IEEEtran}
@@ -224,17 +281,19 @@ This work was prepared with the supervised assistance of artificial intelligence
 % Balance final page columns (optional, IEEE-style)
 \balance
 
-\newpage
-\section*{Apendix}
-Stability proof for adaptation and symbolical derivations for discretization coefficients matrices.
-\input{w3d-lyap.tex-part}
+%\newpage
+%\section*{Appendix}
+%Symbolical derivations for discretization coefficients matrices.
+%\input{w3d-lyap.tex-part}
 
-\section*{Symbolical Derivations}
-\input{w3d-phi-symb.tex-part}
-\input{w3d-qd-symb.tex-part}
-\input{w3d-qd-symb-lap.tex-part}
-\input{w3d-phi-A-symb.tex-part}
-\input{w3d-qd-A-symb.tex-part}
-\input{w3d-proc-symb-assembly.tex-part}
+%\input{w3d-adapt-spec.tex-part}
+
+%\section*{Symbolical Derivations}
+%\input{w3d-phi-symb.tex-part}
+%\input{w3d-qd-symb.tex-part}
+%\input{w3d-qd-symb-lap.tex-part}
+%\input{w3d-phi-A-symb.tex-part}
+%\input{w3d-qd-A-symb.tex-part}
+%\input{w3d-proc-symb-assembly.tex-part}
 
 \end{document}
