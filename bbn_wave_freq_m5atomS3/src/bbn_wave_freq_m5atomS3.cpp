@@ -49,6 +49,7 @@
 #include "WaveDirectionDetector.h"
 #include "M5_Calibr.h"
 #include "Kalman3D_Wave.h"
+#include "TSS1Output.h"
 
 bool useMahony = true;
 FrequencyTracker useFrequencyTracker = Aranovskiy;
@@ -89,6 +90,7 @@ const char* imu_name;
 
 bool produce_serial_data = true;
 bool report_nmea = true;
+bool enable_tss1_output = true;
 
 float t = 0.0;
 float heave_avg = 0.0;
@@ -273,7 +275,11 @@ void read_and_processIMU_data() {
     int serial_report_period_micros = 125000;
     if (now - last_refresh >= (produce_serial_data ? serial_report_period_micros : 1000000)) {
       if (produce_serial_data) {
-        if (report_nmea) {
+        if (enable_tss1_output) {
+          // 如果开启 TSS1 输出，则只输出 TSS1 语句
+          // a * g_std 表示垂直加速度 (m/s^2)
+          gen_tss1_simple(a * g_std, heaveAlt, roll, pitch);
+        } else if (report_nmea) {
           // do not report data for which filters clearly didn't converge
           if (wave_height < 30.0) {
             gen_nmea0183_xdr("$BBXDR,D,%.5f,M,DRG1", wave_height);
