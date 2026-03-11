@@ -351,6 +351,8 @@ void setup(void) {
   auto cfg = M5.config();
   M5.begin(cfg);
   Serial.begin(115200);
+  delay(1000);  // 等待 USB-CDC 枚举完成，避免开机信息丢失
+  Serial.println("=== BBN Wave Sensor Starting ===");
 
   auto imu_type = M5.Imu.getType();
   switch (imu_type) {
@@ -363,10 +365,14 @@ void setup(void) {
     default:                  imu_name = "unknown";     break;
   };
   disp.fillRect(0, 0, rect_text_area.w, rect_text_area.h, TFT_BLACK);
+  Serial.printf("IMU type: %s\n", imu_name);
 
   if (imu_type == m5::imu_none) {
+    Serial.println("ERROR: IMU not found! Check hardware connection.");
+    Serial.flush();
     for (;;) {
-      delay(1);
+      delay(1000);
+      Serial.println("ERROR: IMU not found - halted.");
     }
   }
 
