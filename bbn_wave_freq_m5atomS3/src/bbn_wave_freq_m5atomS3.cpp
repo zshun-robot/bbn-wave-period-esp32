@@ -356,7 +356,7 @@ void repeatMe() {
 void setup(void) {
   auto cfg = M5.config();
   M5.begin(cfg);
-  Serial.begin(115200);
+  Serial.begin(19200);
   delay(1000);  // 等待 USB-CDC 枚举完成，避免开机信息丢失
   Serial.println("=== BBN Wave Sensor Starting ===");
 

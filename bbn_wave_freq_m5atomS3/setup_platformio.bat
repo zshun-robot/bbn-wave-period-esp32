@@ -76,7 +76,7 @@ if not exist "platformio.ini" (
         echo framework = arduino
         echo.
         echo ; Serial Monitor options
-        echo monitor_speed = 115200
+        echo monitor_speed = 19200
         echo monitor_filters =
         echo     default
         echo     time
