@@ -4,22 +4,28 @@
 #include <Arduino.h>
 
 /*
-  TSS1 / R Heave 1 / R Heave 2 Data Format Output
+  TSS1 / R Heave 1 / R Heave 2 原版协议格式输出
   
-  Format: 27-byte fixed length, 7-bit ASCII
-  Message: : XX AAAA S MHHHH Q MRRRR S MPPPP <cr><lf>
+  Format (格式): 27-byte 定长字节, 7-bit ASCII
+  Message (报文): : XX AAAA S MHHHH Q MRRRR S MPPPP <cr><lf>
   
-  Fields:
-  - `:` 	Start character
-  - `XX`	Horizontal acceleration (Local X-Y). units: 0.0383m/s^2. ASCII HEX MSB first. Unsigned.
-  - `AAAA`	Vertical acceleration (Local Z). units: 0.000625 m/s^2. ASCII HEX MSB first. (-20.48 to 20.48, Down: negative)
-  - `S` 	Space 
-  - `MHHHH` Heave. M = sign (space for +, '-' for -). HHHH = units of 0.01m (0000 to 9999). Above datum: Positive.
-  - `Q` 	Status flag ('U' for unsettled/settled etc, we use 'U' for stable, 'u' for unstable)
-  - `MRRRR` Roll. M = sign (space for +, '-' for -). RRRR = units of 0.01 deg. Port up: positive.
-  - `S` 	Space
-  - `MPPPP` Pitch. M = sign (space for +, '-' for -). PPPP = units of 0.01 deg. Bow up: positive.
-  - `<cr><lf>` Terminator pair
+  字段详解 (Fields Definition):
+  - `:`       起始符 (Start character): ASCII冒号 (3Ah)
+  - `XX`      水平加速度 (Horizontal acceleration, Local X-Y): 单位为 0.0383 m/s²。ASCII HEX格式输出(0-9, A-Z)，高位在前(MSB first)。无符号数 (0.0 到 9.7665 m/s²)。
+  - `AAAA`    垂直加速度 (Vertical acceleration, Local Z): 单位为 0.000625 m/s²。ASCII HEX格式输出(0-9, A-Z)，高位在前。有符号数：向下为负 (-20.48 到 20.48 m/s²)。
+  - `S`       空格 (Space): ASCII空格 (20h)
+  - `MHHHH`   升沉/垂荡 (Heave): 
+                M = 符号位 (Sign): 正数为主数据基准面上方为空格(' ')，负数为减号('-') (Above datum: Positive)
+                HHHH = 数值: 单位为 0.01 m，范围 0000 到 9999 (-99.99 到 99.99 m)
+  - `Q`       状态标志位 (Status flag): 代表设备当前是否稳定，'U' = 稳定/正常工作，'u' = 未稳定/初始对准中
+  - `MRRRR`   横滚角 (Absolute Roll):
+                M = 符号位 (Sign): 左舷抬起(Port up)为正(' ')，右舷抬起为负('-')
+                RRRR = 数值: 单位为 0.01 度(°)，范围 0000 到 9999 (-99.99° 到 99.99°)
+  - `S`       空格 (Space): ASCII空格 (20h)
+  - `MPPPP`   俯仰角 (Pitch):
+                M = 符号位 (Sign): 船艏仰起(Bow up)为正(' ')，船艏下沉为负('-')
+                PPPP = 数值: 单位为 0.01 度(°)，范围 0000 到 9000 (-90.00° 到 90.00°)
+  - `<cr><lf>`结尾符 (Terminator pair): 回车+换行 (0Dh, 0Ah)
 */
 
 void gen_tss1_data(float horizontal_accel, float vertical_accel, float heave, 
