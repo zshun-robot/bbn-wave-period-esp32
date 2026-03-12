@@ -272,7 +272,7 @@ void read_and_processIMU_data() {
     float ap_wave_number = TrochoidalWave<float>::wavenumberFromWavelength(ap_wavelength);
     float ap_wave_speed = TrochoidalWave<float>::waveSpeedFromWavenumber(ap_wave_number);
 
-    int serial_report_period_micros = 125000;
+    int serial_report_period_micros = 5000;  // 125000 = 8Hz, 5000 = 200Hz
     if (now - last_refresh >= (produce_serial_data ? serial_report_period_micros : 1000000)) {
       if (produce_serial_data) {
         if (enable_tss1_output) {
