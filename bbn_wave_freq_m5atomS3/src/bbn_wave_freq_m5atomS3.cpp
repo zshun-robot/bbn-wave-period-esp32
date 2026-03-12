@@ -272,7 +272,7 @@ void read_and_processIMU_data() {
     float ap_wave_number = TrochoidalWave<float>::wavenumberFromWavelength(ap_wavelength);
     float ap_wave_speed = TrochoidalWave<float>::waveSpeedFromWavenumber(ap_wave_number);
 
-    int serial_report_period_micros = 5000;  // 125000 = 8Hz, 5000 = 200Hz
+    int serial_report_period_micros = 10000;  // 10000 = 100Hz
     if (now - last_refresh >= (produce_serial_data ? serial_report_period_micros : 1000000)) {
       if (produce_serial_data) {
         if (enable_tss1_output) {
@@ -356,7 +356,7 @@ void repeatMe() {
 void setup(void) {
   auto cfg = M5.config();
   M5.begin(cfg);
-  Serial.begin(19200);
+  Serial.begin(115200);
   delay(1000);  // 等待 USB-CDC 枚举完成，避免开机信息丢失
   Serial.println("=== BBN Wave Sensor Starting ===");
 
